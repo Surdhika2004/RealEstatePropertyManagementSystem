@@ -1,0 +1,35 @@
+.property-footer{padding:0.5rem 0}
+.pagination-pills{gap:8px;display:flex;align-items:center;flex-wrap:wrap}
+.pill{width:36px;height:36px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e0e5eb;background:#ffffff;color:#16325c;font-weight:600;margin:0 4px;cursor:pointer;transition:transform .18s ease, background .18s ease, box-shadow .18s ease}
+.pill:hover{background:#f5f8fb;transform:scale(1.05)}
+.pill.current{background:#0176D3;color:#ffffff;border-color:#0176D3}
+.nav-button{border-radius:6px;background:transparent}
+.nav-button:hover{background:#f4f6f9}
+.footer-left{display:flex;align-items:center}
+.footer-center{display:flex;justify-content:center}
+.footer-right{display:flex;align-items:center;justify-content:flex-end}
+@media (max-width:480px){.pagination-pills{justify-content:center}}
+
+/* Datatable wrapper: limit height and enable vertical scroll */
+.datatable-wrapper{max-height:500px;overflow-y:auto}
+
+/* Attempt to style rows inside the datatable for a desktop-app feel. Note: lightning-datatable uses shadow DOM; these rules
+	will apply where the DOM structure exposes table rows to the light DOM or if your org's theme allows it. */
+.datatable-wrapper table.slds-table tbody tr{border-bottom:1px solid #e5e5e5;transition:background-color .18s ease}
+.datatable-wrapper table.slds-table tbody tr:hover{background-color:#f3f3f3}
+
+/* Fallback styling if the datatable renders rows directly */
+.datatable-wrapper tr{border-bottom:1px solid #e5e5e5}
+.datatable-wrapper tr:hover{background-color:#f3f3f3}
+
+/* Scrollbar styling to better match SLDS visual language */
+.datatable-wrapper::-webkit-scrollbar{width:10px;height:10px}
+.datatable-wrapper::-webkit-scrollbar-track{background:#f4f6f9;border-radius:8px}
+.datatable-wrapper::-webkit-scrollbar-thumb{background:#c9d6e6;border-radius:8px;border:2px solid #f4f6f9}
+.datatable-wrapper::-webkit-scrollbar-thumb:hover{background:#b0c6df}
+
+/* Firefox scrollbar colors */
+.datatable-wrapper{scrollbar-width:thin;scrollbar-color:#c9d6e6 #f4f6f9}
+
+/* Fallback for older browsers */
+.datatable-wrapper{-ms-overflow-style:auto}

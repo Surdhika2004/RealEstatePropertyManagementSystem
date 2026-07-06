@@ -1,0 +1,382 @@
+<template>
+    <lightning-card title="Property Management" icon-name="standard:account">
+        <div class="slds-card slds-card_boundary slds-p-around_medium slds-m-bottom_medium">
+            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-wrap">
+                <div class="slds-col slds-size_1-of-1 slds-large-size_5-of-12">
+                    <div class="slds-media slds-media_center">
+                        <div class="slds-media__figure slds-m-right_small">
+                            <img src={mallowLogoUrl} alt="Mallow Realty Group Logo" class="slds-avatar slds-avatar_large" style="object-fit: contain;" />
+                        </div>
+                        <div class="slds-media__body">
+                            <p class="slds-text-title_caps slds-line-height_reset slds-m-bottom_xx-small">Corporate Portfolio Management</p>
+                            <h1 class="slds-page-header__title slds-truncate" title="Mallow Realty Group">
+                                Mallow Realty Group
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slds-col slds-size_1-of-1 slds-large-size_7-of-12 slds-grid slds-grid_align-end slds-grid_vertical-align-center slds-wrap slds-gutters_x-small slds-m-top_small slds-large-m-top_none">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12 slds-p-horizontal_x-small slds-m-bottom_x-small slds-medium-m-bottom_none">
+                        <lightning-input
+                            type="search"
+                            placeholder="Type area, city, or name..."
+                            value={searchKey}
+                            onchange={handleSearchKeyChange}
+                            variant="label-hidden">
+                        </lightning-input>
+                    </div>
+
+                    <template if:true={hasActiveFilters}>
+                        <div class="slds-col slds-no-flex slds-p-horizontal_x-small">
+                            <lightning-button
+                                label="Reset"
+                                variant="neutral"
+                                icon-name="utility:refresh"
+                                onclick={handleResetFilters}>
+                            </lightning-button>
+                        </div>
+                    </template>
+
+                    <div class="slds-col slds-no-flex slds-is-relative slds-p-horizontal_x-small">
+                        <lightning-button
+                            label="Filter"
+                            variant="neutral"
+                            icon-name="utility:filterList"
+                            onclick={toggleFilterMenu}>
+                        </lightning-button>
+
+                        <template if:true={isFilterMenuOpen}>
+                            <div class="slds-box slds-theme_default slds-is-absolute" style="top: calc(100% + 0.25rem); right: 0; z-index: 9000; width: 20rem;">
+                                <div class="slds-p-around_small">
+                                    <div class="slds-m-bottom_small">
+                                        <lightning-slider label="Max Budget Range" min="0" max="50000" step="500" value={draftFilters.maxPrice} onchange={handleSliderChange}></lightning-slider>
+                                    </div>
+                                    <div class="slds-m-bottom_small">
+                                        <lightning-combobox label="Status" options={statusOptions} value={draftFilters.status} onchange={handleStatusChange}></lightning-combobox>
+                                    </div>
+                                    <div class="slds-m-bottom_medium">
+                                        <lightning-combobox label="Furnishing Status" options={furnishingOptions} value={draftFilters.furnishingStatus} onchange={handleFurnishingStatusChange}></lightning-combobox>
+                                    </div>
+                                    <div class="slds-grid slds-grid_align-end">
+                                        <lightning-button label="Apply Filters" variant="brand" onclick={handleApplyFilters}></lightning-button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="slds-col slds-no-flex slds-p-horizontal_x-small">
+                        <lightning-button label="New" variant="brand" onclick={handleNewPropertyClick}></lightning-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slds-card slds-card_boundary">
+            <div class="slds-p-horizontal_medium slds-p-vertical_small">
+                <template if:true={isLoading}>
+                    <div class="slds-text-align_center slds-p-vertical_medium">
+                        <lightning-spinner alternative-text="Loading properties" size="medium"></lightning-spinner>
+                    </div>
+                </template>
+
+                <template if:true={hasRecords}>
+                    <div class="datatable-wrapper">
+                        <lightning-datatable
+                            key-field="Id"
+                            data={properties}
+                            columns={columns}
+                            hide-checkbox-column
+                            onrowaction={handleRowClick}>
+                        </lightning-datatable>
+                    </div>
+                </template>
+
+                <template if:true={showNoRecords}>
+                    <div class="slds-text-align_center slds-p-vertical_medium">
+                        <lightning-icon icon-name="utility:search" size="large"></lightning-icon>
+                        <p class="slds-text-heading_medium">No properties match your search.</p>
+                        <p class="slds-text-body_regular">Try adjusting your filters or creating a new property.</p>
+                    </div>
+                </template>
+
+                <template if:false={isLoading}>
+                    <div class="property-footer slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-top_medium slds-wrap">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-horizontal_small footer-left">
+                            <p class="slds-text-body_regular">Showing {showingStart}–{showingEnd} of {totalRecords} Properties</p>
+                        </div>
+
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-horizontal_small footer-center slds-grid slds-align_absolute-center slds-grid_vertical-align-center">
+                            <div class="pagination-controls slds-grid slds-grid_vertical-align-center slds-wrap">
+                                <div class="slds-col">
+                                    <lightning-button-icon icon-name="utility:chevronleft" alternative-text="Previous" title="Previous" onclick={handlePrevious} class="nav-button" disabled={isPreviousDisabled}></lightning-button-icon>
+                                </div>
+
+                                <div class="slds-col pagination-pills slds-grid slds-grid_vertical-align-center">
+                                    <template for:each={pageNumberObjects} for:item="p">
+                                        <button key={p.num} class={p.className} data-page={p.num} onclick={goToPage} aria-label={p.label} title={p.label}>
+                                            {p.num}
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <div class="slds-col">
+                                    <lightning-button-icon icon-name="utility:chevronright" alternative-text="Next" title="Next" onclick={handleNext} class="nav-button" disabled={isNextDisabled}></lightning-button-icon>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-horizontal_small footer-right slds-text-align_right">
+                            <!-- Reserved for additional controls or summary -->
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+
+    <template if:true={isModalOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <lightning-button-icon icon-name="utility:close" alternative-text="Close" onclick={closeModal} class="slds-modal__close"></lightning-button-icon>
+                    <h2 class="slds-text-heading_medium">Create New Property</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <div class="slds-grid slds-wrap slds-gutters_small">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="Property Name" value={propertyName} onchange={handleFieldChange} data-id="Name" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="Address" value={propertyAddress} onchange={handleFieldChange} data-id="Address__c" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="City" value={propertyCity} onchange={handleFieldChange} data-id="City__c" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="State" value={propertyState} onchange={handleFieldChange} data-id="State__c" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="Postal Code" value={propertyPostalCode} onchange={handleFieldChange} data-id="Postal_Code__c" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="Country" value={propertyCountry} onchange={handleFieldChange} data-id="Country__c" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-combobox label="Type" value={propertyType} options={typeOptions} onchange={handleFieldChange} data-id="Type__c" required></lightning-combobox>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-combobox label="Furnishing Status" value={propertyFurnishingStatus} options={furnishingOptions} onchange={handleFieldChange} data-id="Furnishing_Status__c"></lightning-combobox>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-combobox label="Status" value={propertyStatus} options={statusOptions} onchange={handleFieldChange} data-id="Status__c" required></lightning-combobox>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input label="Rent" type="number" value={propertyRent} onchange={handleFieldChange} data-id="Rent__c" required></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1">
+                            <lightning-textarea label="Description" value={propertyDescription} onchange={handleFieldChange} data-id="Description__c" required></lightning-textarea>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1">
+                            <lightning-file-upload
+                                label="Property Images"
+                                accept=".png,.jpg,.jpeg"
+                                record-id={propertyRecordId}
+                                multiple
+                                onuploadfinished={handleUploadFinished}>
+                            </lightning-file-upload>
+                        </div>
+                        <template if:true={hasUploadedFiles}>
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_small">
+                                <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                                    <div class="slds-col">
+                                        <p class="slds-text-title_bold">Uploaded Images ({uploadedFilesCount})</p>
+                                    </div>
+                                    <div class="slds-col slds-text-color_weak">Tap close to remove files</div>
+                                </div>
+                                <div class="slds-grid slds-wrap slds-gutters_small">
+                                    <template for:each={uploadedFiles} for:item="file">
+                                        <div key={file.id} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                            <div class="slds-box slds-theme_shade slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-around_x-small slds-border_radius slds-m-bottom_x-small">
+                                                <div class="slds-grid slds-grid_vertical-align-center slds-col">
+                                                    <lightning-icon icon-name="utility:image" size="x-small" class="slds-text-color_success"></lightning-icon>
+                                                    <span class="slds-m-left_x-small slds-truncate" title={file.name}>{file.name}</span>
+                                                </div>
+                                                <div class="slds-col slds-no-flex">
+                                                    <lightning-button-icon
+                                                        icon-name="utility:close"
+                                                        variant="bare"
+                                                        alternative-text="Remove Image"
+                                                        title="Remove Image"
+                                                        data-id={file.id}
+                                                        onclick={handleRemoveImage}>
+                                                    </lightning-button-icon>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <footer class="slds-modal__footer">
+                    <div class="slds-grid slds-grid_align-end slds-align_absolute-center slds-p-horizontal_small" role="toolbar">
+                        <div class="slds-col">
+                            <lightning-button label="Cancel" onclick={closeModal} class="slds-m-right_small"></lightning-button>
+                            <lightning-button label="Create Property" variant="brand" onclick={handleSaveProperty}></lightning-button>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <template if:true={selectedPropertyId}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 class="slds-modal__title slds-hyphenate">Property Specifications</h2>
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeDetailModal}>
+                        <lightning-icon icon-name="utility:close" size="small" alternative-text="close"></lightning-icon>
+                    </button>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <div class="slds-grid slds-wrap">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_7-of-12 slds-p-right_medium">
+                            <template if:false={isEditMode}>
+    <lightning-record-view-form
+        record-id={selectedPropertyId}
+        object-api-name="Property__c">
+
+        <div class="slds-grid slds-wrap">
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-output-field field-name="Name"></lightning-output-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-output-field field-name="Rent__c"></lightning-output-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-output-field field-name="Status__c"></lightning-output-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-output-field field-name="Furnishing_Status__c"></lightning-output-field>
+            </div>
+
+            <!-- NEW -->
+            <div class="slds-col slds-size_1-of-1 slds-p-around_x-small">
+                <lightning-output-field field-name="Tenant__c"></lightning-output-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-1 slds-p-around_x-small">
+                <lightning-output-field field-name="Description__c"></lightning-output-field>
+            </div>
+        </div>
+
+    </lightning-record-view-form>
+</template>
+
+<template if:true={isEditMode}>
+
+    <lightning-record-edit-form
+        record-id={selectedPropertyId}
+        object-api-name="Property__c"
+        onsuccess={handlePropertyUpdateSuccess}
+        oncancel={handleCancelEdit}>
+
+        <lightning-messages></lightning-messages>
+
+        <div class="slds-grid slds-wrap">
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-input-field field-name="Name"></lightning-input-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-input-field field-name="Rent__c"></lightning-input-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-input-field field-name="Status__c"></lightning-input-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-2 slds-p-around_x-small">
+                <lightning-input-field field-name="Furnishing_Status__c"></lightning-input-field>
+            </div>
+
+            <!-- NEW -->
+            <div class="slds-col slds-size_1-of-1 slds-p-around_x-small">
+                <lightning-input-field field-name="Tenant__c"></lightning-input-field>
+            </div>
+
+            <div class="slds-col slds-size_1-of-1 slds-p-around_x-small">
+                <lightning-input-field field-name="Description__c"></lightning-input-field>
+            </div>
+
+        </div>
+
+        <div class="slds-m-top_medium slds-text-align_right">
+            <lightning-button
+                label="Cancel"
+                onclick={handleCancelEdit}
+                class="slds-m-right_small">
+            </lightning-button>
+
+            <lightning-button
+                type="submit"
+                variant="brand"
+                label="Save">
+            </lightning-button>
+        </div>
+
+    </lightning-record-edit-form>
+
+</template>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12 slds-border_left slds-p-left_medium">
+                            <h3 class="slds-text-heading_small slds-m-bottom_small">Property Gallery</h3>
+                            <template if:true={attachedImageIds.length}>
+                                <div class="slds-grid slds-wrap">
+                                    <template for:each={attachedImageIds} for:item="fileId">
+                                        <div key={fileId} class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                            <img src={fileId} alt="Property image preview" class="slds-image" style="max-width: 100%; border-radius: 4px;" />
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template if:false={attachedImageIds.length}>
+                                <div class="slds-align_absolute-center slds-text-color_weak" style="height: 150px;">
+                                    No images uploaded for this property.
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slds-modal__footer">
+
+    <template if:false={isEditMode}>
+        <lightning-button
+            label="Edit"
+            variant="brand"
+            onclick={handleEdit}
+            class="slds-m-right_small">
+        </lightning-button>
+
+        <lightning-button
+            label="Close"
+            variant="neutral"
+            onclick={closeDetailModal}>
+        </lightning-button>
+    </template>
+
+</footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>
